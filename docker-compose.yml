@@ -1,0 +1,7 @@
+version: "2"
+services:
+  app:
+    build: .
+    image: keboola/dropbox-v2
+    stdin_open: true
+    tty: true
