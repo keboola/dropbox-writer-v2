@@ -1,0 +1,8 @@
+vendor/
+data/
+.idea/
+build/
+.kdev4
+*.kdev4
+/.tern-port
+/tmp/*
