@@ -1,4 +1,4 @@
-DATADIR = ${PWD}/data
+DATADIR = ${PWD}/tmp
 run:
 	docker-compose run --rm -v $(DATADIR):/data app
 shell:

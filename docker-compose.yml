@@ -2,6 +2,8 @@ version: "2"
 services:
   app:
     build: .
+    volumes:
+      - ./src:/code/src
     image: keboola/dropbox-v2
     stdin_open: true
     tty: true
