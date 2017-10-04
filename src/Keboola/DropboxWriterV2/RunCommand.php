@@ -12,18 +12,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Yaml\Yaml;
+use Alorel\Dropbox\Operation\Files\Upload;
+use Alorel\Dropbox\Options\Builder\UploadOptions;
+use Alorel\Dropbox\Parameters\WriteMode;
+use Guzzle\Http\Client as Guzzle;
+use GuzzleHttp\Exception\ClientException;
 
-function walkDir($path) {
-    $result = array();
-    $scanned_directory = array_diff(scandir($path), array('..', '.'));
-    $dirs = array_filter($scanned_directory, function($i) use($path){return is_dir("$path/$i");});
-    $files = array_diff($scanned_directory, $dirs);
-    foreach ($dirs as $key => $dir) {
-        $result = array_merge($result, walkDir("$path/$dir"));
-    }
-    $filePaths = array_map(function($f) use($path) { return "$path/$f";}, $files);
-    return array_merge($result, $filePaths);
-}
+
+
 
 class RunCommand extends Command
 {
@@ -55,13 +52,52 @@ class RunCommand extends Command
             throw new \Exception("Config file not found at path $configFilePath");
         }
         $decode = new JsonDecode(true);
-        $configDecoded = $decode->decode(file_get_contents($configFilePath), JsonEncoder::FORMAT);
+        $config = $decode->decode(file_get_contents($configFilePath), JsonEncoder::FORMAT);
+        if (empty($config['authorization'])) {
+            throw new UserException('Missing authorization data');
+        }
+        $tokenData = json_decode($config['authorization']['oauth_api']['credentials']['#data'], true);
+        $token = $tokenData->access_token;
+        $dropboxClient = new Upload(false, $token);
+        $options = (!empty($config['parameters']['mode']) && $config['parameters']['mode'] == 'rewrite')
+        ? (new UploadOptions())->setWriteMode(WriteMode::overwrite())
+        : (new UploadOptions())->setWriteMode(WriteMode::add())->setAutoRename(true);
+
         $files = $this->prepareFilesToUpload("$dataDirectory/in");
+        foreach ($files as $filePath => $dst) {
+            $consoleOutput->writeln("$dst upload started");
+            $this->uploadFile($filePath, $dst, $dropboxClient, $options);
+            $consoleOutput->writeln("$dst upload finished");
+        }
+    }
+
+    private function uploadFile($filePath, $dst, $client, $options) {
+		try {
+			$client->raw($dst, fopen($filePath, 'r'), $options);
+		} catch (ClientException $e) {
+			$reason = "Unknown reason";
+			if ($e->hasResponse()) {
+				$reason = $e->getResponse()->getBody()->getContents();
+			}
+			throw new UserException("Error uploading $dst. Reason: $reason");
+		}
+    }
+
+    private function fetchDir($path) {
+        $result = array();
+        $scanned_directory = array_diff(scandir($path), array('..', '.'));
+        $dirs = array_filter($scanned_directory, function($i) use($path){return is_dir("$path/$i");});
+        $files = array_diff($scanned_directory, $dirs);
+        foreach ($dirs as $key => $dir) {
+            $result = array_merge($result, $this->fetchDir("$path/$dir"));
+        }
+        $filePaths = array_map(function($f) use($path) { return "$path/$f";}, $files);
+        return array_merge($result, $filePaths);
     }
 
     private function prepareFilesToUpload($dirPath)
     {
-        $allFiles = walkDir($dirPath);
+        $allFiles = fetchDir($dirPath);
         $manifestExt = '.manifest';
         $files = array_filter($allFiles, function($f) use ($manifestExt)
             {
@@ -79,7 +115,7 @@ class RunCommand extends Command
                 }
             }
             $dst = "/$fileName";
-            $result[$file] = $fileName;
+            $result[$file] = $dst;
         }
         return $result;
     }
