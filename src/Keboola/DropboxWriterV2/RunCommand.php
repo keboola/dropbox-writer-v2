@@ -71,9 +71,9 @@ class RunCommand extends Command
         $consoleOutput->writeln("Found $count items to upload:");
         $idx = 1;
         foreach ($allFiles as $filePath => $dst) {
-            $consoleOutput->writeln("[$idx].  $dst upload started $modeMessage");
+            $consoleOutput->writeln("[$idx.]  $dst upload started $modeMessage");
             $this->uploadFile($filePath, '/' . $dst, $dropboxClient, $options);
-            $consoleOutput->writeln("[$idx].  $dst upload finished");
+            $consoleOutput->writeln("[$idx.]  $dst upload finished");
             $idx++;
         }
     }
