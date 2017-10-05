@@ -6,3 +6,4 @@ build/
 *.kdev4
 /.tern-port
 /tmp/*
+/.DS_Store

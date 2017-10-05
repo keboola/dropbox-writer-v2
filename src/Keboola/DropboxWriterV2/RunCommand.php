@@ -12,7 +12,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Yaml\Yaml;
 use Alorel\Dropbox\Operation\Files\Upload;
 use Alorel\Dropbox\Options\Builder\UploadOptions;
 use Alorel\Dropbox\Parameters\WriteMode;
@@ -57,17 +56,23 @@ class RunCommand extends Command
             throw new UserException('Missing authorization data');
         }
         $tokenData = json_decode($config['authorization']['oauth_api']['credentials']['#data'], true);
-        $token = $tokenData->access_token;
+        $token = $tokenData["access_token"];
         $dropboxClient = new Upload(false, $token);
         $options = (!empty($config['parameters']['mode']) && $config['parameters']['mode'] == 'rewrite')
         ? (new UploadOptions())->setWriteMode(WriteMode::overwrite())
         : (new UploadOptions())->setWriteMode(WriteMode::add())->setAutoRename(true);
 
-        $files = $this->prepareFilesToUpload("$dataDirectory/in");
-        foreach ($files as $filePath => $dst) {
-            $consoleOutput->writeln("$dst upload started");
-            $this->uploadFile($filePath, $dst, $dropboxClient, $options);
-            $consoleOutput->writeln("$dst upload finished");
+        $inFiles = $this->prepareFilesToUpload("$dataDirectory/in/files", function($path) {return $this->tryParseNameFromManifest($path);});
+        $inTables = $this->prepareFilesToUpload("$dataDirectory/in/tables", "basename");
+        $allFiles = array_merge($inFiles, $inTables);
+        $count = count($allFiles);
+        $consoleOutput->writeln("Found $count items to upload:");
+        $idx = 1;
+        foreach ($allFiles as $filePath => $dst) {
+            $consoleOutput->writeln("[$idx]. $dst upload started");
+            $this->uploadFile($filePath, '/' . $dst, $dropboxClient, $options);
+            $consoleOutput->writeln("[$idx]. $dst upload finished");
+            $idx++;
         }
     }
 
@@ -95,27 +100,33 @@ class RunCommand extends Command
         return array_merge($result, $filePaths);
     }
 
-    private function prepareFilesToUpload($dirPath)
+    private function tryParseNameFromManifest($filePath) {
+        $name = basename($filePath);
+        $manifestFile = $filePath . '.manifest';
+        if (file_exists($manifestFile)) {
+            $decode = new JsonDecode(true);
+            $manifest = $decode->decode(file_get_contents($manifestFile), JsonEncoder::FORMAT);
+            if (!empty($manifest['name'])) {
+                $name = $manifest['name'];
+            }
+        }
+        return $name;
+    }
+
+    private function prepareFilesToUpload($dirPath, $parseDestinationFn)
     {
-        $allFiles = fetchDir($dirPath);
-        $manifestExt = '.manifest';
-        $files = array_filter($allFiles, function($f) use ($manifestExt)
+        $allFiles = $this->fetchDir($dirPath);
+        $files = array_filter($allFiles, function($f)
             {
-                return $manifestExt != substr($f, strlen($manifestExt));
+                $ext = '.manifest';
+                $extLen = strlen($ext);
+                return strlen($f) < $extLen || $ext !== substr($f, - $extLen);
             }
         );
         $result = array();
         foreach ($files as $key => $file) {
-            $fileName = basename($file);
-            $manifestFile = $file . $manifestExt;
-            if (file_exists($manifestFile)) {
-                $manifest = Yaml::parse(file_get_contents($manifestFile));
-                if (!empty($manifest['name'])) {
-                    $fileName = $manifest['name'];
-                }
-            }
-            $dst = "/$fileName";
-            $result[$file] = $dst;
+            $destination = call_user_func($parseDestinationFn, $file);
+            $result[$file] = $destination;
         }
         return $result;
     }

@@ -4,6 +4,7 @@ services:
     build: .
     volumes:
       - ./src:/code/src
+      - ./vendor:/code/vendor
     image: keboola/dropbox-v2
     stdin_open: true
     tty: true
