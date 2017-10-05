@@ -1,5 +1,5 @@
 # Keboola Dropbox Writer V2
-Use [Dropbox API v2](https://www.dropbox.com/developers/documentation/http/documentation) to upload files loaded into input mapping folders structure ie `/data/in/{files,tables}`.
+Use [Dropbox API v2](https://www.dropbox.com/developers/documentation/http/documentation) to upload files to Dropbox loaded from input mapping folders structure ie `/data/in/files` and `/data/in/tables` folders. Upload of files with `.manifest` extension is skipped.
 Authorization is done by [oauth-v2](http://docs.oauthv2.apiary.io/) component.
 
 #### Parameters
