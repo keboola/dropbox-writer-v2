@@ -1,0 +1,19 @@
+sudo: required
+language: bash
+services:
+  - docker
+before_script:
+  - docker -v
+  - docker-compose -v
+  - docker-compose build
+script:
+  - docker-compose run --rm app ./vendor/bin/phpcs --standard=psr2 --ignore=vendor -n .
+  - docker-compose run --rm app ./vendor/bin/phpunit  --debug --colors=always
+after_success:
+  - docker images
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: ./deploy.sh
+  on:
+    tags: true
