@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "Upload Parameters",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "mode": {
+      "enum": [
+        "rewrite",
+        "create new"
+      ],
+      "type": "string",
+      "title": "Resolve names conflict strategy",
+      "default": "always create new"
+    }
+  }
+}
