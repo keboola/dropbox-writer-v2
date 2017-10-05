@@ -58,7 +58,9 @@ class RunCommand extends Command
         $tokenData = json_decode($config['authorization']['oauth_api']['credentials']['#data'], true);
         $token = $tokenData["access_token"];
         $dropboxClient = new Upload(false, $token);
-        $options = (!empty($config['parameters']['mode']) && $config['parameters']['mode'] == 'rewrite')
+        $rewriteDestination = !empty($config['parameters']['mode']) && $config['parameters']['mode'] == 'rewrite';
+        $modeMessage = $rewriteDestination ? '(rewriting destination)' : '';
+        $options = $rewriteDestination
         ? (new UploadOptions())->setWriteMode(WriteMode::overwrite())
         : (new UploadOptions())->setWriteMode(WriteMode::add())->setAutoRename(true);
 
@@ -69,9 +71,9 @@ class RunCommand extends Command
         $consoleOutput->writeln("Found $count items to upload:");
         $idx = 1;
         foreach ($allFiles as $filePath => $dst) {
-            $consoleOutput->writeln("[$idx]. $dst upload started");
+            $consoleOutput->writeln("[$idx].  $dst upload started $modeMessage");
             $this->uploadFile($filePath, '/' . $dst, $dropboxClient, $options);
-            $consoleOutput->writeln("[$idx]. $dst upload finished");
+            $consoleOutput->writeln("[$idx].  $dst upload finished");
             $idx++;
         }
     }
