@@ -18,12 +18,10 @@ use Alorel\Dropbox\Parameters\WriteMode;
 use Guzzle\Http\Client as Guzzle;
 use GuzzleHttp\Exception\ClientException;
 
-
-
-
 class RunCommand extends Command
 {
-    protected function configure() {
+    protected function configure()
+    {
         $this->setName('run');
         $this->setDescription('Runs the App');
         $this->addArgument('data directory', InputArgument::REQUIRED, 'Data directory');
@@ -64,7 +62,9 @@ class RunCommand extends Command
         ? (new UploadOptions())->setWriteMode(WriteMode::overwrite())
         : (new UploadOptions())->setWriteMode(WriteMode::add())->setAutoRename(true);
 
-        $inFiles = $this->prepareFilesToUpload("$dataDirectory/in/files", function($path) {return $this->tryParseNameFromManifest($path);});
+        $inFiles = $this->prepareFilesToUpload("$dataDirectory/in/files", function ($path) {
+            return $this->tryParseNameFromManifest($path);
+        });
         $inTables = $this->prepareFilesToUpload("$dataDirectory/in/tables", "basename");
         $allFiles = array_merge($inFiles, $inTables);
         $count = count($allFiles);
@@ -78,31 +78,38 @@ class RunCommand extends Command
         }
     }
 
-    private function uploadFile($filePath, $dst, $client, $options) {
-		try {
-			$client->raw($dst, fopen($filePath, 'r'), $options);
-		} catch (ClientException $e) {
-			$reason = "Unknown reason";
-			if ($e->hasResponse()) {
-				$reason = $e->getResponse()->getBody()->getContents();
-			}
-			throw new UserException("Error uploading $dst. Reason: $reason");
-		}
+    private function uploadFile($filePath, $dst, $client, $options)
+    {
+        try {
+            $client->raw($dst, fopen($filePath, 'r'), $options);
+        } catch (ClientException $e) {
+            $reason = "Unknown reason";
+            if ($e->hasResponse()) {
+                $reason = $e->getResponse()->getBody()->getContents();
+            }
+            throw new UserException("Error uploading $dst. Reason: $reason");
+        }
     }
 
-    private function fetchDir($path) {
+    private function fetchDir($path)
+    {
         $result = array();
         $scanned_directory = array_diff(scandir($path), array('..', '.'));
-        $dirs = array_filter($scanned_directory, function($i) use($path){return is_dir("$path/$i");});
+        $dirs = array_filter($scanned_directory, function ($i) use ($path) {
+            return is_dir("$path/$i");
+        });
         $files = array_diff($scanned_directory, $dirs);
         foreach ($dirs as $key => $dir) {
             $result = array_merge($result, $this->fetchDir("$path/$dir"));
         }
-        $filePaths = array_map(function($f) use($path) { return "$path/$f";}, $files);
+        $filePaths = array_map(function ($f) use ($path) {
+            return "$path/$f";
+        }, $files);
         return array_merge($result, $filePaths);
     }
 
-    private function tryParseNameFromManifest($filePath) {
+    private function tryParseNameFromManifest($filePath)
+    {
         $name = basename($filePath);
         $manifestFile = $filePath . '.manifest';
         if (file_exists($manifestFile)) {
@@ -118,13 +125,11 @@ class RunCommand extends Command
     private function prepareFilesToUpload($dirPath, $parseDestinationFn)
     {
         $allFiles = $this->fetchDir($dirPath);
-        $files = array_filter($allFiles, function($f)
-            {
+        $files = array_filter($allFiles, function ($f) {
                 $ext = '.manifest';
                 $extLen = strlen($ext);
                 return strlen($f) < $extLen || $ext !== substr($f, - $extLen);
-            }
-        );
+        });
         $result = array();
         foreach ($files as $key => $file) {
             $destination = call_user_func($parseDestinationFn, $file);
@@ -132,5 +137,4 @@ class RunCommand extends Command
         }
         return $result;
     }
-
 }
