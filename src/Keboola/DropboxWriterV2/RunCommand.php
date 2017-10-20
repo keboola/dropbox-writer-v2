@@ -13,8 +13,11 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Alorel\Dropbox\Operation\Files\Upload;
+use Alorel\Dropbox\Operation\Files\CreateFolder;
+use Alorel\Dropbox\Operation\Files\ListFolder\ListFolder;
 use Alorel\Dropbox\Options\Builder\UploadOptions;
 use Alorel\Dropbox\Parameters\WriteMode;
+use Alorel\Dropbox\Exception\DropboxException;
 use Guzzle\Http\Client as Guzzle;
 use GuzzleHttp\Exception\ClientException;
 
@@ -68,13 +71,62 @@ class RunCommand extends Command
         $inTables = $this->prepareFilesToUpload("$dataDirectory/in/tables", "basename");
         $allFiles = array_merge($inFiles, $inTables);
         $count = count($allFiles);
+
+        $folderPath = '';
+        if (!empty($config['parameters']['folder'])) {
+            $folderPath = '/' . $config['parameters']['folder'];
+            $this->prepareFolder($folderPath, $token, $consoleOutput);
+        }
+
         $consoleOutput->writeln("Found $count items to upload:");
         $idx = 1;
         foreach ($allFiles as $filePath => $dst) {
-            $consoleOutput->writeln("[$idx.]  $dst upload started $modeMessage");
-            $this->uploadFile($filePath, '/' . $dst, $dropboxClient, $options);
-            $consoleOutput->writeln("[$idx.]  $dst upload finished");
+            $dstPath = $folderPath . '/' .$dst;
+            $consoleOutput->writeln("[$idx.]  $dstPath upload started $modeMessage");
+            $this->uploadFile($filePath, $dstPath, $dropboxClient, $options);
+            $consoleOutput->writeln("[$idx.]  $dstPath upload finished");
             $idx++;
+        }
+    }
+
+    private function prepareFolder($folderPath, $token, $consoleOutput)
+    {
+        $consoleOutput->writeln("Checking folder $folderPath");
+        $listFolder = new ListFolder(false, $token);
+        try {
+            $listFolder->raw($folderPath);
+            $consoleOutput->writeln("Folder $folderPath exists");
+        } catch (ClientException $e) {
+            // print json_decode($e->getResponse()->getBody()->getContents(), true)['error_summary'] === 'path/not_found/' ? 'JOJO' : 'NENEN';
+            $reason = "Unknown reason";
+            if ($e->hasResponse()) {
+                $reason = $e->getResponse()->getBody()->getContents();
+                $parsedReason = json_decode($reason, true);
+                $notFoundReason = "path/not_found";
+                $errorSummary = $parsedReason['error_summary'];
+                if (substr($errorSummary, 0, strlen($notFoundReason)) === $notFoundReason) {
+                    $consoleOutput->writeln("Creating folder $folderPath");
+                    $this->createFolder($folderPath, $token);
+                } else {
+                    throw new UserException("Error listing folder $folderPath. Reason: $reason");
+                }
+            } else {
+                throw new UserException("Error listing folder $folderPath. Reason: $reason");
+            }
+        }
+    }
+
+    private function createFolder($folderPath, $token)
+    {
+        $createFolder = new CreateFolder(false, $token);
+        try {
+            $createFolder->raw($folderPath);
+        } catch (ClientException $e) {
+            $reason = "Unknown reason";
+            if ($e->hasResponse()) {
+                $reason = $e->getResponse()->getBody()->getContents();
+            }
+            throw new UserException("Error creating folder $folderPath. Reason: $reason");
         }
     }
 

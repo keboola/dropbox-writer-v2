@@ -2,9 +2,14 @@
   "type": "object",
   "title": "Upload Parameters",
   "required": [
-    "mode"
+    "mode",
+    "folder"
   ],
   "properties": {
+    "folder": {
+      "type": "string",
+      "title": "Destination folder name within the application folder"
+    },
     "mode": {
       "enum": [
         "rewrite",
@@ -12,7 +17,7 @@
       ],
       "type": "string",
       "title": "Resolve names conflict strategy",
-      "default": "always create new"
+      "default": "create new"
     }
   }
 }

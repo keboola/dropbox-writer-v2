@@ -3,7 +3,9 @@ Use [Dropbox API v2](https://www.dropbox.com/developers/documentation/http/docum
 Authorization is done by [oauth-v2](http://docs.oauthv2.apiary.io/) component.
 
 #### Parameters
-Configuration supports parameter **`mode`** which describes how to resolve conflicts of destination file names. If set to `rewrite` then the conflicted file will be rewritten otherwise new file with sequence number appended to the name will be created e.g. _my file (1)_.
+Configuration supports the following parameters
+- **`mode`** - describes how to resolve conflicts of destination file names. If set to `rewrite` then the conflicted file will be rewritten otherwise new file with sequence number appended to the name will be created e.g. _my file (1)_.
+- **`folder`** - destination folder name within the writer application folder e.g _mydata_. If folder does not exist it will be created.
 
 
 #### Sample configuration
@@ -32,7 +34,8 @@ Configuration supports parameter **`mode`** which describes how to resolve confl
     }
   },
   "parameters": {
-    "mode": "rewrite"
+    "mode": "rewrite",
+    "folder": "mydata"
   },
   "authorization": {
     "oauth_api": {
