@@ -7,6 +7,7 @@ services:
     tty: true
   dev:
     image: keboola/wr-dropbox-v2
+    build: .
     volumes:
       - ./src:/code/src
       - ./vendor:/code/vendor
