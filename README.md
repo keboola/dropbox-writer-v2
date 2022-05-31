@@ -44,3 +44,7 @@ Configuration supports the following parameters
   }
 }
 ```
+
+## License
+
+MIT licensed, see [LICENSE](./LICENSE) file.
